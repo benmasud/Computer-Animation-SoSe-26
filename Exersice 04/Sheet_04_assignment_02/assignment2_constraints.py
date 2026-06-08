@@ -87,10 +87,10 @@ def assignment2(max_frames=None, show_viewer=True):
             joints=(joints, joints, joints, joints),
             motions=(motions, optimized_motions_A, optimized_motions_B, optimized_motions_C),
             legends=('Original', 'Config A: rhumerus', 'Config B: arm', 'Config C: full arm'),
-            legend_groups=('Original', 'Config A', 'Config B', 'Config C')
+            legend_groups=None
         )
         viewer.run()
 
 
 if __name__ == '__main__':
-    assignment2(max_frames=100, show_viewer=True)
+    assignment2(max_frames=500, show_viewer=True)
