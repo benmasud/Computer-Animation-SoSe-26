@@ -21,9 +21,8 @@ def extract_joint_world_positions(joints, motions, joint_name):
 
 
 def assignment2(max_frames=None, show_viewer=True):
-    print('=' * 80)
     print('ASSIGNMENT 2: Spacetime Constraint Method')
-    print('=' * 80)
+  
 
     root_dir = os.path.abspath(os.path.dirname(__file__))
     asf_path = os.path.join(root_dir, 'data', 'HDM_bk.asf')
@@ -54,9 +53,7 @@ def assignment2(max_frames=None, show_viewer=True):
     print(f'Target hand Y range: [{target_trajectory[1].min():.2f}, {target_trajectory[1].max():.2f}]')
 
     # CONFIGURATION A: rhumerus only
-    print('\n' + '='*80)
     print('CONFIG A: Optimize rhumerus (upper arm only)')
-    print('='*80)
     optimized_motions_A = optimizeWithConstraint(
         joints, motions, constraint=target_trajectory,
         joint_names=['rhumerus'], hand_name='rhand'
@@ -65,9 +62,8 @@ def assignment2(max_frames=None, show_viewer=True):
     print(f'Result Y range: [{opt_hand_A[:, 1].min():.2f}, {opt_hand_A[:, 1].max():.2f}]')
 
     # CONFIGURATION B: rhumerus + rradius
-    print('\n' + '='*80)
     print('CONFIG B: Optimize rhumerus + rradius (upper arm + forearm)')
-    print('='*80)
+
     optimized_motions_B = optimizeWithConstraint(
         joints, motions, constraint=target_trajectory,
         joint_names=['rhumerus', 'rradius'], hand_name='rhand'
@@ -76,9 +72,7 @@ def assignment2(max_frames=None, show_viewer=True):
     print(f'Result Y range: [{opt_hand_B[:, 1].min():.2f}, {opt_hand_B[:, 1].max():.2f}]')
 
     # CONFIGURATION C: Full arm chain
-    print('\n' + '='*80)
     print('CONFIG C: Optimize rshoulder + rhumerus + rradius (full arm)')
-    print('='*80)
     optimized_motions_C = optimizeWithConstraint(
         joints, motions, constraint=target_trajectory,
         joint_names=['rshoulder', 'rhumerus', 'rradius'], hand_name='rhand'
@@ -88,9 +82,7 @@ def assignment2(max_frames=None, show_viewer=True):
 
     # Visualize
     if show_viewer:
-        print('\n' + '='*80)
         print('Launching Viewer')
-        print('='*80)
         viewer = Viewer(
             joints=(joints, joints, joints, joints),
             motions=(motions, optimized_motions_A, optimized_motions_B, optimized_motions_C),
@@ -101,4 +93,4 @@ def assignment2(max_frames=None, show_viewer=True):
 
 
 if __name__ == '__main__':
-    assignment2(max_frames=50, show_viewer=True)
+    assignment2(max_frames=100, show_viewer=True)
