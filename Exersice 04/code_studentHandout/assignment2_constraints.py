@@ -43,12 +43,62 @@ def assignment2(max_frames=None, show_viewer=True):
         motions = motions[:max_frames]
         print(f'Using first {max_frames} frames for testing.')
 
-    # TODO: implement assignment 2 here
-    # - Define a target hand trajectory (constraint) based on the original hand positions
-    # - Call optimizeWithConstraint() to optimize the motion
-    # - Visualize original and optimized motion in the viewer
-    # - Experiment with different joint_names and weights in objfun (see optimization/objfun.py)
+    # Extract original hand positions
+    print('\nExtracting original hand positions...')
+    original_hand_positions = extract_joint_world_positions(joints, motions, 'rhand')
+    print(f'Original hand Y range: [{original_hand_positions[:, 1].min():.2f}, {original_hand_positions[:, 1].max():.2f}]')
+    
+    # Define target trajectory: raise hand 5 units
+    hand_offset = np.array([[0.0], [5.0], [0.0]], dtype=np.float64)
+    target_trajectory = original_hand_positions.T + hand_offset
+    print(f'Target hand Y range: [{target_trajectory[1].min():.2f}, {target_trajectory[1].max():.2f}]')
+
+    # CONFIGURATION A: rhumerus only
+    print('\n' + '='*80)
+    print('CONFIG A: Optimize rhumerus (upper arm only)')
+    print('='*80)
+    optimized_motions_A = optimizeWithConstraint(
+        joints, motions, constraint=target_trajectory,
+        joint_names=['rhumerus'], hand_name='rhand'
+    )
+    opt_hand_A = extract_joint_world_positions(joints, optimized_motions_A, 'rhand')
+    print(f'Result Y range: [{opt_hand_A[:, 1].min():.2f}, {opt_hand_A[:, 1].max():.2f}]')
+
+    # CONFIGURATION B: rhumerus + rradius
+    print('\n' + '='*80)
+    print('CONFIG B: Optimize rhumerus + rradius (upper arm + forearm)')
+    print('='*80)
+    optimized_motions_B = optimizeWithConstraint(
+        joints, motions, constraint=target_trajectory,
+        joint_names=['rhumerus', 'rradius'], hand_name='rhand'
+    )
+    opt_hand_B = extract_joint_world_positions(joints, optimized_motions_B, 'rhand')
+    print(f'Result Y range: [{opt_hand_B[:, 1].min():.2f}, {opt_hand_B[:, 1].max():.2f}]')
+
+    # CONFIGURATION C: Full arm chain
+    print('\n' + '='*80)
+    print('CONFIG C: Optimize rshoulder + rhumerus + rradius (full arm)')
+    print('='*80)
+    optimized_motions_C = optimizeWithConstraint(
+        joints, motions, constraint=target_trajectory,
+        joint_names=['rshoulder', 'rhumerus', 'rradius'], hand_name='rhand'
+    )
+    opt_hand_C = extract_joint_world_positions(joints, optimized_motions_C, 'rhand')
+    print(f'Result Y range: [{opt_hand_C[:, 1].min():.2f}, {opt_hand_C[:, 1].max():.2f}]')
+
+    # Visualize
+    if show_viewer:
+        print('\n' + '='*80)
+        print('Launching Viewer')
+        print('='*80)
+        viewer = Viewer(
+            joints=(joints, joints, joints, joints),
+            motions=(motions, optimized_motions_A, optimized_motions_B, optimized_motions_C),
+            legends=('Original', 'Config A: rhumerus', 'Config B: arm', 'Config C: full arm'),
+            legend_groups=('Original', 'Config A', 'Config B', 'Config C')
+        )
+        viewer.run()
 
 
 if __name__ == '__main__':
-    assignment2()
+    assignment2(max_frames=50, show_viewer=True)

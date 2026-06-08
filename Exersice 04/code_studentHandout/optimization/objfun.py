@@ -156,44 +156,52 @@ def apply_optimized_frame_to_motion(frame, rFrame, oFrame, joints, jointNames, j
 
 
 def objfun(x, oFrame, skel, constraints, optProps, jointList):
-    """Compute the residual vector for the spacetime constraint optimization.
-
-    Called repeatedly by least_squares() with candidate solutions. Returns a
-    concatenated vector of three weighted error terms that least_squares minimizes
-    by adjusting the joint quaternions in x.
-
-    Parameters
-    ----------
-    x : np.ndarray
-        Current optimization vector — flattened quaternions for all joints in jointList.
-    oFrame : dict
-        Original (unmodified) frame data, used as reference for orientation and
-        smoothness terms.
-    skel : dict
-        Skeleton joint dictionary as returned by parse_asf().
-    constraints : list
-        Target world position for the hand joint, shape (3,).
-    optProps : dict
-        Optimization state, including 'handName' and 'x_1' (previous frame solution).
-    jointList : list of int
-        Indices of joints included in the optimization.
-
-    Returns
-    -------
-    np.ndarray
-        Residual vector to be minimized by least_squares(). Concatenation of:
-        - Term 1: hand position error (weighted by weightHandPosition)
-        - Term 2: orientation error  (weighted by weightOrientation)
-        - (optionally) Term 3: smoothness error   (weighted by weightSmoothness)
-    """
-    # TODO: implement the objective function
-    # Hints:
-    # - Use X2Frame(x, copy.deepcopy(oFrame), jointList) to reconstruct the frame
-    # - Use forwardKinematicsQuat(skel, rFrame) to compute joint world positions
-    # - Term 1: position error — distance of hand joint to target constraint
-    # - Term 2: orientation error — keep optimized joints close to original rotation
-    # - Combine both terms with appropriate weights and return as a single vector
-    raise NotImplementedError("Implement the objective function here.")
+    """Compute residual vector for spacetime constraint optimization."""
+    
+    # WEIGHTS - Tune these for different results
+    weightHandPosition = 10.0
+    weightOrientation  = 1.0
+    weightSmoothness   = 0.5
+    
+    # TERM 1: Hand position error
+    rFrame = X2Frame(x, copy.deepcopy(oFrame), jointList)
+    rFrame['jointTrajectories'] = forwardKinematicsQuat(skel, rFrame)
+    
+    hand_name = optProps['handName']
+    hand_idx = rFrame['jointNames'].index(hand_name)
+    hand_pos = np.squeeze(rFrame['jointTrajectories'][hand_idx])
+    target_pos = np.array(constraints[0], dtype=np.float64)
+    
+    pos_error = weightHandPosition * (hand_pos - target_pos)
+    term1 = np.atleast_1d(pos_error).flatten()
+    
+    # TERM 2: Orientation error
+    term2_list = []
+    idx = 0
+    for jointIndex in jointList:
+        if oFrame['rotationQuat'][jointIndex] is not None:
+            optimized_quat = np.asarray(x[idx:idx + 4], dtype=np.float64)
+            optimized_quat = normalize_quaternion(optimized_quat)
+            original_quat = np.squeeze(oFrame['rotationQuat'][jointIndex])
+            
+            if np.dot(original_quat, optimized_quat) < 0:
+                optimized_quat = -optimized_quat
+            
+            quat_diff = 1.0 - np.dot(original_quat, optimized_quat)
+            term2_list.append(weightOrientation * quat_diff)
+            idx += 4
+    
+    term2 = np.atleast_1d(term2_list).flatten()
+    
+    # TERM 3: Smoothness error
+    term3 = np.array([], dtype=np.float64)
+    if optProps['x_1'] is not None and len(optProps['x_1']) > 0:
+        smoothness_error = weightSmoothness * (x - optProps['x_1'])
+        term3 = np.atleast_1d(smoothness_error).flatten()
+    
+    # Combine all terms
+    residuals = np.concatenate([term1, term2, term3])
+    return residuals
 
 
 def forwardKinematicsQuat(skel, mot):
